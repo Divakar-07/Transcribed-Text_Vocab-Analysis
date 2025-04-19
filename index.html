@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Voice to Text & Vocabulary Judge</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="/assets/favicon.png" type="image/png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+      background-color: #f5f5f5;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    button {
+      padding: 12px 20px;
+      margin: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    #output, #analysis {
+      margin-top: 20px;
+      padding: 15px;
+      background: #fff;
+      border-radius: 10px;
+      width: 90%;
+      margin-left: auto;
+      margin-right: auto;
+      box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      color: #4CAF50;
+    }
+
+    /* Footer Styling */
+    .footer-strip {
+      width: 100%;
+      background-color: #1e1e1e;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.3);
+      flex-wrap: wrap;
+      box-sizing: border-box;
+      color: #fff;
+    }
+
+    .social-links {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .social-links a {
+      color: #fff;
+      text-decoration: none;
+      font-size: 18px;
+      transition: color 0.3s;
+    }
+
+    .social-links a:hover {
+      color: #00acee;
+    }
+
+    .footer-text {
+      font-size: 14px;
+      white-space: nowrap;
+      margin-top: 5px;
+    }
+
+    .cursor {
+      display: inline-block;
+      color: #00ff00;
+      animation: blink 0.7s steps(1) infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .social-links img {
+      vertical-align: middle;
+      filter: brightness(0) invert(1); /* Makes logos white in dark mode */
+      height: 20px;
+      transition: transform 0.2s ease;
+    }
+
+    .social-links img:hover {
+      transform: scale(1.1);
+    }
+
+    @media screen and (max-width: 600px) {
+      .footer-strip {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .footer-text {
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div>
+    <h1>🎤 Real-Time Voice to Text + Vocabulary Judge</h1>
+
+    <button onclick="startRecognition()"><i class="fa-solid fa-microphone-lines"></i> Start Speaking</button>
+    <button onclick="analyzeText()"><i class="fa-solid fa-chart-column"></i> Analyze Vocabulary</button>
+    <button onclick="resetAll()"><i class="fa-solid fa-rotate"></i> Reset</button>
+
+    <div id="output">
+      <h2>Transcribed Text</h2>
+      <p id="transcript">...</p>
+    </div>
+
+    <div id="analysis">
+      <h2>Vocabulary Analysis</h2>
+      <p id="stats">No analysis yet.</p>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-strip">
+    <div class="social-links">
+      <a href="https://www.instagram.com" target="_blank"><i class="fa-brands fa-instagram"></i></a>
+      <a href="https://www.linkedin.com/in/yourusername" target="_blank"><i class="fa-brands fa-linkedin-in"></i></a>
+      <a href="https://leetcode.com/Chief-DS" target="_blank">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/1/19/LeetCode_logo_black.png" alt="LeetCode">
+      </a>
+      <a href="https://github.com/Divakar-07" target="_blank"><i class="fa-brands fa-github"></i></a>
+      <a href="https://www.hackerrank.com/divakarsharma291" target="_blank"><i class="fa-brands fa-hackerrank"></i></a>
+    </div>
+
+    <div class="footer-text">
+      Created by <span id="typed-name"></span><span class="cursor">|</span>
+    </div>
+  </div>
+
+  <script>
+    // Typing animation
+    const name = "Divakar Sharma";
+    const typingElement = document.getElementById("typed-name");
+    let index = 0;
+    let typing = true;
+
+    function typeWriter() {
+      if (typing) {
+        if (index < name.length) {
+          typingElement.textContent += name.charAt(index);
+          index++;
+          setTimeout(typeWriter, 150);
+        } else {
+          typing = false;
+          setTimeout(typeWriter, 1000);
+        }
+      } else {
+        if (index > 0) {
+          typingElement.textContent = name.substring(0, index - 1);
+          index--;
+          setTimeout(typeWriter, 100);
+        } else {
+          typing = true;
+          setTimeout(typeWriter, 500);
+        }
+      }
+    }
+
+    window.addEventListener("load", typeWriter);
+
+    // Speech Recognition Logic
+    const transcriptOutput = document.getElementById("transcript");
+    const statsOutput = document.getElementById("stats");
+    let fullTranscript = "";
+
+    function startRecognition() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.continuous = false;
+
+      recognition.onresult = function(event) {
+        const result = event.results[0][0].transcript;
+        fullTranscript += " " + result;
+        transcriptOutput.textContent = fullTranscript.trim();
+      };
+
+      recognition.onerror = function(event) {
+        alert("Error occurred: " + event.error);
+      };
+
+      recognition.start();
+    }
+
+    function analyzeText() {
+      const text = fullTranscript.trim().toLowerCase();
+      if (!text) {
+        statsOutput.textContent = "Please speak something first!";
+        return;
+      }
+
+      const allWords = text.split(/\s+/);
+      const uniqueWords = [...new Set(allWords)];
+      const richness = ((uniqueWords.length / allWords.length) * 100).toFixed(2);
+
+      const advancedWords = ['profound', 'ameliorate', 'intrinsic', 'exacerbate', 'meticulous', 'candid'];
+      const usedAdvanced = uniqueWords.filter(word => advancedWords.includes(word));
+
+      statsOutput.innerHTML = `
+        🧠 Total Words: <b>${allWords.length}</b><br>
+        📚 Unique Words: <b>${uniqueWords.length}</b><br>
+        🌟 Vocabulary Richness: <b>${richness}%</b><br>
+        🧩 Advanced Words Used: <b>${usedAdvanced.join(', ') || 'None'}</b>
+      `;
+    }
+
+    function resetAll() {
+      fullTranscript = "";
+      transcriptOutput.textContent = "...";
+      statsOutput.textContent = "No analysis yet.";
+    }
+  </script>
+
+</body>
+</html>
